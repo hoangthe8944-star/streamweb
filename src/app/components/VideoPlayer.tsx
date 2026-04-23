@@ -1,118 +1,181 @@
-import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Volume2, Maximize, Settings } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
+import {
+  Play, Pause, Volume2, VolumeX, Maximize, Minimize,
+  Settings, Radio, Loader2, AlertCircle, RefreshCw
+} from "lucide-react";
 
 interface VideoPlayerProps {
-  streamKey: string; // 🔥 Cần truyền streamKey vào đây
-  thumbnail: string;
+  streamKey: string;
+  thumbnail?: string;
   viewers: number;
   isLive?: boolean;
 }
 
-export function VideoPlayer({
-  streamKey,
-  thumbnail,
-  viewers,
-  isLive = true,
-}: VideoPlayerProps) {
+export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>();
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY_MS = 3000;
 
-  // Link HLS từ Node Media Server của bạn
-  const hlsUrl = `http://localhost:8000/live/${streamKey}/index.m3u8`;
+  // Khai báo các State
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [volume, setVolume] = useState(0.8);
+  const [buffering, setBuffering] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false); // ĐÃ THÊM BIẾN NÀY ĐỂ HẾT LỖI
+  const [fullscreen, setFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+
+  // Link HLS từ MediaMTX: /live/key/index.m3u8
+  const hlsUrl = `http://localhost:8888/live/${streamKey}/index.m3u8`;
+
+  const initPlayer = useCallback((isRetry = false) => {
+    const video = videoRef.current;
+    if (!video || !streamKey) return;
+
+    // Cleanup instance cũ
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    clearTimeout(retryTimer.current);
+
+    if (!isRetry) {
+      retryCount.current = 0;
+      setError(null);
+    }
+
+    setBuffering(true);
+    setRetrying(isRetry);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        lowLatencyMode: true,
+        backBufferLength: 0,
+        manifestLoadingMaxRetry: 10,
+        manifestLoadingRetryDelay: 1000,
+      });
+
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play()
+          .then(() => {
+            setPlaying(true);
+            setBuffering(false);
+            setRetrying(false);
+            retryCount.current = 0;
+          })
+          .catch(() => {
+            setBuffering(false);
+            setRetrying(false);
+          });
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          console.warn("HLS Error:", data.type);
+          if (retryCount.current < MAX_RETRIES) {
+            retryCount.current += 1;
+            setRetrying(true);
+            hls.destroy();
+            retryTimer.current = setTimeout(() => initPlayer(true), RETRY_DELAY_MS);
+          } else {
+            setError("Streamer đang ngoại tuyến hoặc lỗi kết nối.");
+            setBuffering(false);
+            setRetrying(false);
+          }
+        }
+      });
+
+      hlsRef.current = hls;
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Dành cho Safari
+      video.src = hlsUrl;
+      video.play().catch(() => {});
+    }
+  }, [hlsUrl, streamKey]);
 
   useEffect(() => {
-    let hls: Hls;
-
-    if (videoRef.current) {
-      const video = videoRef.current;
-
-      if (Hls.isSupported()) {
-        hls = new Hls();
-        hls.loadSource(hlsUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          // video.play(); // Tự động chạy nếu muốn
-        });
-      } 
-      // Dành cho Safari (hỗ trợ HLS gốc)
-      else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = hlsUrl;
-      }
-    }
-
+    initPlayer();
     return () => {
-      if (hls) {
-        hls.destroy();
-      }
+      hlsRef.current?.destroy();
+      clearTimeout(retryTimer.current);
     };
-  }, [hlsUrl]);
+  }, [initPlayer]);
 
+  // Các hàm điều khiển
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (playing) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
-      setPlaying(!playing);
-    }
+    if (!videoRef.current) return;
+    if (playing) videoRef.current.pause(); else videoRef.current.play();
+  };
+
+  const toggleMute = () => setMuted(!muted);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) containerRef.current.requestFullscreen();
+    else document.exitFullscreen();
   };
 
   return (
-    <div className="relative bg-black aspect-video w-full flex items-center justify-center group overflow-hidden">
-      {/* Video Element */}
+    <div
+      ref={containerRef}
+      className="relative bg-black aspect-video w-full select-none overflow-hidden group"
+    >
       <video
         ref={videoRef}
-        poster={thumbnail} // Hiện thumbnail khi chưa load xong video
+        poster={thumbnail}
         className="w-full h-full object-contain"
         playsInline
+        muted={muted}
       />
 
-      {/* Overlay khi hover */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      {/* Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <div className="flex items-center gap-4">
-          <button onClick={togglePlay} className="p-2 hover:bg-white/20 rounded transition-colors">
-            {playing ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white" />}
-          </button>
-
-          <button className="p-2 hover:bg-white/20 rounded">
-            <Volume2 className="w-5 h-5" />
-          </button>
-
-          <div className="flex-1">
-            {/* Thanh tiến trình - Với livestream thường là thanh trạng thái thời gian thực */}
-            <div className="h-1 bg-white/30 rounded-full">
-              <div className="h-full bg-purple-500 rounded-full w-full shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-            </div>
-          </div>
-
-          <button className="p-2 hover:bg-white/20 rounded">
-            <Settings className="w-5 h-5" />
-          </button>
-
-          <button 
-             onClick={() => videoRef.current?.requestFullscreen()}
-             className="p-2 hover:bg-white/20 rounded"
-          >
-            <Maximize className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* LIVE badge */}
-      {isLive && (
-        <div className="absolute top-4 left-4 bg-red-600 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider animate-pulse">
-          LIVE
+      {/* Overlay: Buffering hoặc Retrying */}
+      {(buffering || retrying) && !error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 z-10">
+          <Loader2 className="w-12 h-12 animate-spin text-white/80" />
+          {retrying && <p className="text-white text-xs mt-2">Đang kết nối lại ({retryCount.current}/{MAX_RETRIES})...</p>}
         </div>
       )}
 
-      {/* viewers count */}
-      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded text-xs font-medium">
-        {viewers.toLocaleString()} viewers
+      {/* Overlay: Lỗi */}
+      {error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 z-20">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+          <p className="text-sm text-white/70">{error}</p>
+          <button
+            onClick={() => initPlayer()}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors text-white"
+          >
+            <RefreshCw className="w-4 h-4" /> Thử lại ngay
+          </button>
+        </div>
+      )}
+
+      {/* Control Bar (Đơn giản hóa) */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-4">
+          <button onClick={togglePlay} className="text-white">
+            {playing ? <Pause /> : <Play />}
+          </button>
+          <button onClick={toggleMute} className="text-white">
+            {muted ? <VolumeX /> : <Volume2 />}
+          </button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2 bg-red-600 px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase">
+            <Radio className="w-3 h-3" /> LIVE
+          </div>
+          <button onClick={toggleFullscreen} className="text-white">
+            <Maximize className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   );

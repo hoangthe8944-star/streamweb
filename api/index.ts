@@ -7,6 +7,7 @@ export { default as streamApi }   from "./streamApi";
 export { default as chatApi }     from "./chatApi";
 export { default as followApi }   from "./followApi";
 export { default as donationApi } from "./donationApi";
+export { default as reportApi }   from "./reportApi";
 
 export { notificationApi }        from "./followApi";
 export { subscriptionApi }        from "./donationApi";
@@ -18,3 +19,4 @@ export type { Stream, CreateStreamRequest, UpdateStreamRequest, StreamKeyRespons
 export type { ChatMessageDto, SendChatRequest }             from "./chatApi";
 export type { FollowDto, NotificationDto }                  from "./followApi";
 export type { DonationDto, CreateDonationRequest, SubscriptionDto, SubscriptionPlanDto } from "./donationApi";
+export type { ReportDto, CreateReportDto, UpdateReportStatusDto } from "./reportApi";

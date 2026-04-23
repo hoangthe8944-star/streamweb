@@ -75,14 +75,22 @@ export const streamApi = {
     api.delete(`/Streams/${id}`),
 
   // Lấy Stream Key của tôi
+  // Lấy stream key
   getMyKey: () =>
-    api.get<StreamKeyResponse>("/Streams/me/key"),
+    api.get<{ streamKey: string }>("/streams/me/key"),  // ← /me/key cho khớp controller
 
-  // Reset Stream Key mới
+  // Reset stream key  
   resetMyKey: () =>
-    api.post<StreamKeyResponse>("/Streams/me/reset-key"),
+    api.post<{ streamKey: string }>("/streams/me/reset-key"),  // ← /me/reset-key
 
-  // Bắt đầu live (Dùng cho Webhook từ Node Media Server)
+  // Upload thumbnail
+  uploadThumbnail: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{ url: string }>("/streams/upload/thumbnail", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },  // Bắt đầu live (Dùng cho Webhook từ Node Media Server)
   startByKey: (data: StreamKeyRequest) =>
     api.post<Stream>("/Streams/start-by-key", data),
 
