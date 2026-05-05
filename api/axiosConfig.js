@@ -8,8 +8,12 @@ const PROD_API = "https://asp-vroo.onrender.com/api";
 // 🔥 instance
 const api = axios.create({
   baseURL: LOCAL_API,
-  headers: { "Content-Type": "application/json" },
-  timeout: 5000,
+  headers: { 
+    "Content-Type": "application/json",
+    // 🛡️ THÊM DÒNG NÀY: Để vượt qua trang cảnh báo của Ngrok
+    "ngrok-skip-browser-warning": "true" 
+  },
+  timeout: 10000, // Tăng lên 10s vì Render/Ngrok khởi động đôi khi hơi chậm
 });
 
 // =======================
@@ -18,6 +22,10 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  
+  // Đảm bảo mọi request gửi đi (kể cả khi retry) đều có header ngrok
+  config.headers["ngrok-skip-browser-warning"] = "true";
+  
   return config;
 });
 
@@ -36,18 +44,20 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // 🔥 NETWORK ERROR → fallback sang server deploy
+    // 🔥 LỖI MẠNG HOẶC CORS (CORS cũng gây ra ERR_NETWORK)
     if (
-      error.code === "ERR_NETWORK" &&
+      (error.code === "ERR_NETWORK" || !error.response) && 
       originalRequest &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
 
-      console.log("🔄 Local API lỗi → chuyển sang server deploy");
+      console.warn("🔄 API hiện tại lỗi (CORS/Network) → Chuyển sang server dự phòng (Render)");
 
+      // Thay đổi URL sang Render
       originalRequest.baseURL = PROD_API;
-
+      
+      // Quan trọng: Phải cập nhật lại URL đầy đủ nếu originalRequest.url là đường dẫn tương đối
       return api(originalRequest);
     }
 
