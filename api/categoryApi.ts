@@ -1,54 +1,69 @@
 import api from "./axiosConfig";
 
-// Định nghĩa Interface dựa trên DTO của Backend
 export interface CategoryDto {
   id: number;
   name: string;
   description?: string;
-  thumbnail?: string; // Thêm nếu backend có trả về ảnh
+  slug?: string;
+  coverImageUrl?: string;
+  bannerImageUrl?: string;
+  genres?: string;    // Dạng: "FPS, Action"
+  steamTags?: string;
+  isFreeToPlay: boolean;
+  currentViewers: number;
+  activeStreamsCount: number;
+  price?: number;
 }
 
-export interface CreateCategoryDto {
+export interface CreateCategoryRequest {
   name: string;
   description?: string;
-  thumbnail?: string;
+  coverImageUrl?: string;
+  genres?: string;
+  isFreeToPlay: boolean;
+  steamAppId?: number;
+}
+
+export interface SteamSearchResult {
+  appId: number;
+  name: string;
+  price: number;
+  isFree: boolean;
+  steamUrl: string;
 }
 
 const categoryApi = {
-  /**
-   * Lấy danh sách tất cả category
-   * GET /api/categories
-   */
+  /** Lấy tất cả danh mục (hiện trang chủ) */
   getAllCategories: () => 
     api.get<CategoryDto[]>("/categories"),
 
-  /**
-   * Lấy chi tiết 1 category
-   * GET /api/categories/:id
-   */
-  getCategoryById: (id: number) => 
+  /** Lấy chi tiết 1 danh mục */
+  getById: (id: number) => 
     api.get<CategoryDto>(`/categories/${id}`),
 
-  /**
-   * Tạo category mới
-   * POST /api/categories
-   */
-  createCategory: (data: CreateCategoryDto) => 
+  /** Lấy danh sách các thể loại duy nhất (để làm filter/chọn) */
+  getGenresList: () => 
+    api.get<string[]>("/categories/genres"),
+
+  /** Admin: Tìm kiếm game trên Steam để sync */
+  searchSteam: (query: string) => 
+    api.get<SteamSearchResult[]>("/categories/search-steam", { params: { q: query } }),
+
+  /** Admin: Đồng bộ game từ Steam về DB */
+  syncFromSteam: (appId: number) => 
+    api.post<CategoryDto>(`/categories/sync-steam/${appId}`),
+
+  /** Admin: Tạo danh mục thủ công */
+  create: (data: CreateCategoryRequest) => 
     api.post<CategoryDto>("/categories", data),
 
-  /**
-   * Cập nhật category
-   * PUT /api/categories/:id
-   */
-  updateCategory: (id: number, data: CreateCategoryDto) => 
-    api.put<{ message: string }>(`/categories/${id}`, data),
+  /** Admin: Xóa danh mục */
+  delete: (id: number) => 
+    api.delete(`/categories/${id}`),
 
-  /**
-   * Xóa category
-   * DELETE /api/categories/:id
-   */
-  deleteCategory: (id: number) => 
-    api.delete<{ message: string }>(`/categories/${id}`),
+  /** Cập nhật thống kê (viewers) cho danh mục */
+  updateStats: (id: number) => 
+    api.post(`/categories/${id}/update-stats`),
 };
 
 export default categoryApi;
