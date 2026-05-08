@@ -45,7 +45,7 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
     if (!hlsUrl) {
       setBuffering(false);
       setRetrying(false);
-      setError("Live video chi kha dung tren moi truong local co media server.");
+      setError("Chua co dia chi public cho media server. Hay dat VITE_MEDIA_SERVER_URL thanh URL HTTPS/Ngrok cua MediaMTX.");
       return;
     }
 
