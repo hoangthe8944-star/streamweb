@@ -5,9 +5,9 @@ import {
 } from "lucide-react";
 import streamApi from "../../../api/streamApi";
 import { DEFAULT_STREAM_IMAGE } from "../utils/streamThumbnail";
+import { getThumbnailServerUrl } from "../utils/mediaUrl";
 
 type SettingsTab = "profile" | "security" | "notifications" | "appearance" | "privacy" | "subscriptions" | "creator";
-const THUMBNAIL_PORT = "5297";
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
@@ -29,7 +29,12 @@ export function SettingsPage() {
       return DEFAULT_STREAM_IMAGE;
     }
 
-    return `http://localhost:${THUMBNAIL_PORT}/thumbnails/${streamKey}.jpg?v=${Date.now()}`;
+    const thumbnailServerUrl = getThumbnailServerUrl();
+    if (!thumbnailServerUrl) {
+      return DEFAULT_STREAM_IMAGE;
+    }
+
+    return `${thumbnailServerUrl}/thumbnails/${streamKey}.jpg?v=${Date.now()}`;
   };
 
   useEffect(() => {

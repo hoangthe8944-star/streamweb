@@ -4,6 +4,7 @@ import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   Settings, Radio, Loader2, AlertCircle, RefreshCw
 } from "lucide-react";
+import { getMediaServerUrl } from "../utils/mediaUrl";
 
 interface VideoPlayerProps {
   streamKey: string;
@@ -32,11 +33,21 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
   const [showControls, setShowControls] = useState(true);
 
   // Link HLS từ MediaMTX: /live/key/index.m3u8
-  const hlsUrl = `http://localhost:8888/live/${streamKey}/index.m3u8`;
+  const mediaServerUrl = getMediaServerUrl();
+  const hlsUrl = mediaServerUrl
+    ? `${mediaServerUrl}/live/${streamKey}/index.m3u8`
+    : "";
 
   const initPlayer = useCallback((isRetry = false) => {
     const video = videoRef.current;
     if (!video || !streamKey) return;
+
+    if (!hlsUrl) {
+      setBuffering(false);
+      setRetrying(false);
+      setError("Live video chi kha dung tren moi truong local co media server.");
+      return;
+    }
 
     // Cleanup instance cũ
     if (hlsRef.current) {

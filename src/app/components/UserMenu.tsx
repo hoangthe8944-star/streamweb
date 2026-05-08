@@ -48,6 +48,16 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
       // Lấy thông tin chi tiết user ngay sau khi login
       const meRes = await userApi.getMe();
       setUser(meRes.data);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...res.data,
+          id: meRes.data.id,
+          userId: meRes.data.id,
+          username: meRes.data.username,
+          role: meRes.data.role,
+        })
+      );
       
       // Reset form và có thể reload trang nếu cần
       setCredentials({ email: "", password: "" });
@@ -61,6 +71,7 @@ export function UserMenu({ isOpen, onClose }: UserMenuProps) {
   // 3. Hàm đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     onClose();
     window.location.reload(); 

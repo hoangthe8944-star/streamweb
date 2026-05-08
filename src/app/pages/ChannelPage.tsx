@@ -24,6 +24,26 @@ import { getStreamThumbnail } from "../utils/streamThumbnail";
 
 const QUICK_DONATION_AMOUNTS = [10000, 20000, 50000, 100000, 200000];
 
+const getApiErrorMessage = (err: any, fallback: string) => {
+  const data = err?.response?.data;
+
+  if (data?.message) {
+    return data.message;
+  }
+
+  if (data?.errors && typeof data.errors === "object") {
+    const firstErrorGroup = Object.values(data.errors).find(
+      (value): value is string[] => Array.isArray(value) && value.length > 0
+    );
+
+    if (firstErrorGroup?.[0]) {
+      return firstErrorGroup[0];
+    }
+  }
+
+  return fallback;
+};
+
 export function ChannelPage() {
   const { channelName } = useParams<{ channelName: string }>();
   const location = useLocation();
@@ -60,7 +80,7 @@ export function ChannelPage() {
         );
 
         if (foundStream) {
-          if (!stream) setStream(foundStream);
+          setStream(foundStream);
           setViewersCount(foundStream.viewersCount);
 
           if (localStorage.getItem("token")) {
@@ -134,7 +154,6 @@ export function ChannelPage() {
       alert("So tien donate phai lon hon 0.");
       return;
     }
-
     try {
       setIsSubmittingDonation(true);
 
@@ -156,7 +175,10 @@ export function ChannelPage() {
       alert("Donate thanh cong. Cam on ban da ung ho streamer!");
     } catch (err: any) {
       console.error("Loi donate:", err);
-      const errorMsg = err.response?.data?.message || "Khong the thuc hien donate luc nay.";
+      const errorMsg = getApiErrorMessage(
+        err,
+        "Khong the thuc hien donate luc nay."
+      );
       alert(errorMsg);
     } finally {
       setIsSubmittingDonation(false);
@@ -189,7 +211,10 @@ export function ChannelPage() {
       setReportReason("");
     } catch (err: any) {
       console.error("Loi bao cao:", err);
-      const msg = err.response?.data?.message || "Khong the gui bao cao vao luc nay.";
+      const msg = getApiErrorMessage(
+        err,
+        "Khong the gui bao cao vao luc nay."
+      );
       alert(msg);
     } finally {
       setIsSubmittingReport(false);
