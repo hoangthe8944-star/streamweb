@@ -35,7 +35,7 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
   // Link HLS từ MediaMTX: /live/key/index.m3u8
   const mediaServerUrl = getMediaServerUrl();
   const hlsUrl = mediaServerUrl
-    ? `${mediaServerUrl}/live/${streamKey}/index.m3u8`
+    ? `${mediaServerUrl}/${streamKey}/index.m3u8`
     : "";
 
   const initPlayer = useCallback((isRetry = false) => {
@@ -45,7 +45,7 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
     if (!hlsUrl) {
       setBuffering(false);
       setRetrying(false);
-      setError("Chua co dia chi public cho media server. Hay dat VITE_MEDIA_SERVER_URL thanh URL HTTPS/Ngrok cua MediaMTX.");
+      setError("Khong tim thay dia chi stream proxy tu backend.");
       return;
     }
 
