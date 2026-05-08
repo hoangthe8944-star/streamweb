@@ -4,7 +4,7 @@ import {
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   Settings, Radio, Loader2, AlertCircle, RefreshCw
 } from "lucide-react";
-import { getMediaServerUrl } from "../utils/mediaUrl";
+import { getHlsUrl } from "../utils/mediaUrl";
 
 interface VideoPlayerProps {
   streamKey: string;
@@ -32,11 +32,9 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
   const [fullscreen, setFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
 
-  // Link HLS từ MediaMTX: /live/key/index.m3u8
-  const mediaServerUrl = getMediaServerUrl();
-  const hlsUrl = mediaServerUrl
-    ? `${mediaServerUrl}/${streamKey}/index.m3u8`
-    : "";
+  // Local uses MediaMTX directly, deployed builds use the API proxy.
+  const hlsUrl = getHlsUrl(streamKey);
+  const shouldSkipNgrokWarning = hlsUrl.includes("ngrok");
 
   const initPlayer = useCallback((isRetry = false) => {
     const video = videoRef.current;
@@ -70,6 +68,11 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
         backBufferLength: 0,
         manifestLoadingMaxRetry: 10,
         manifestLoadingRetryDelay: 1000,
+        xhrSetup: (xhr) => {
+          if (shouldSkipNgrokWarning) {
+            xhr.setRequestHeader("ngrok-skip-browser-warning", "true");
+          }
+        },
       });
 
       hls.loadSource(hlsUrl);
@@ -111,7 +114,7 @@ export function VideoPlayer({ streamKey, thumbnail, viewers, isLive = true }: Vi
       video.src = hlsUrl;
       video.play().catch(() => {});
     }
-  }, [hlsUrl, streamKey]);
+  }, [hlsUrl, shouldSkipNgrokWarning, streamKey]);
 
   useEffect(() => {
     initPlayer();
