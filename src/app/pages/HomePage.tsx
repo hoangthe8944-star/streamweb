@@ -3,15 +3,13 @@ import { StreamCard } from "../components/StreamCard";
 import { CategoryCard } from "../components/CategoryCard";
 import streamApi, { Stream } from "../../../api/streamApi";
 import categoryApi, { CategoryDto } from "../../../api/categoryApi";
+import { DEFAULT_STREAM_IMAGE, getStreamThumbnail } from "../utils/streamThumbnail";
 
 export function HomePage() {
   const [liveStreams, setLiveStreams] = useState<Stream[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // QUAN TRỌNG: Kiểm tra xem cổng Backend của bạn là 7100 hay 5297 và sửa tại đây
-  const BACKEND_URL = "http://localhost:5297";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,9 +24,9 @@ export function HomePage() {
 
         setLiveStreams(streamsRes.data);
         setCategories(categoriesRes.data);
-      } catch (err: any) {
-        console.error("Lỗi khi tải dữ liệu trang chủ:", err);
-        setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+      } catch (err) {
+        console.error("Loi khi tai du lieu trang chu:", err);
+        setError("Khong the ket noi den may chu. Vui long thu lai sau.");
       } finally {
         setLoading(false);
       }
@@ -36,26 +34,6 @@ export function HomePage() {
 
     fetchData();
   }, []);
-
-  /**
-   * Hàm lấy Thumbnail thông minh:
-   * 1. Nếu có link ảnh từ DB (User tự upload) -> Dùng link đó.
-   * 2. Nếu không có -> Dùng ảnh screenshot tự động khớp với tên StreamKey.
-   * 3. Thêm tham số thời gian ?t=... để trình duyệt không lấy ảnh cũ (Refresh thumbnail).
-   */
-  const getStreamThumbnail = (stream: Stream) => {
-    if (stream.thumbnail && stream.thumbnail.startsWith('http')) {
-      return stream.thumbnail;
-    }
-
-    // Tạo chuỗi thời gian để tránh bị cache ảnh cũ
-    const version = new Date().getTime();
-    const PORT = "5297"; // Đảm bảo đây là cổng đúng với backend của bạn
-    return `http://localhost:${PORT}/thumbnails/${stream.streamKey}.jpg?v=${version}`;
-  };
-
-  // Ảnh mặc định cực đẹp từ Unsplash nếu mọi thứ đều lỗi
-  const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80";
 
   if (error) {
     return (
@@ -65,7 +43,7 @@ export function HomePage() {
           onClick={() => window.location.reload()}
           className="bg-purple-600 px-8 py-3 rounded-xl text-white font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20"
         >
-          THỬ LẠI NGAY
+          THU LAI NGAY
         </button>
       </div>
     );
@@ -73,17 +51,16 @@ export function HomePage() {
 
   return (
     <div className="p-6 custom-scrollbar overflow-y-auto h-full bg-[#0e0e10]">
-      {/* SECTION: STREAM ĐANG LIVE */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-8 bg-purple-600 rounded-full shadow-[0_0_15px_rgba(147,51,234,0.5)]" />
             <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">
-              Kênh đang phát trực tiếp
+              Kenh dang phat truc tiep
             </h2>
           </div>
           <button className="text-purple-400 text-sm font-bold hover:text-purple-300 transition-colors">
-            Xem tất cả
+            Xem tat ca
           </button>
         </div>
 
@@ -102,9 +79,10 @@ export function HomePage() {
             {liveStreams.map((stream) => (
               <StreamCard
                 key={stream.id}
+                stream={stream}
                 channelName={stream.streamerName}
                 title={stream.title}
-                game={stream.categoryName || "Đang trò chuyện"}
+                game={stream.categoryName || "Dang tro chuyen"}
                 viewers={stream.viewersCount}
                 thumbnail={getStreamThumbnail(stream)}
               />
@@ -113,20 +91,21 @@ export function HomePage() {
         ) : (
           <div className="bg-[#1f1f23]/50 p-20 rounded-3xl text-center border border-white/5 backdrop-blur-sm">
             <div className="inline-flex p-4 rounded-full bg-white/5 mb-4 text-white/20">
-              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </div>
-            <p className="text-white/40 text-xl font-medium">Hiện không có ai phát sóng lúc này.</p>
-            <p className="text-white/20 text-sm mt-2">Hãy quay lại sau hoặc theo dõi thêm streamer mới!</p>
+            <p className="text-white/40 text-xl font-medium">Hien khong co ai phat song luc nay.</p>
+            <p className="text-white/20 text-sm mt-2">Hay quay lai sau hoac theo doi them streamer moi.</p>
           </div>
         )}
       </section>
 
-      {/* PHẦN DANH MỤC PHỔ BIẾN */}
       <section>
         <div className="flex items-center gap-3 mb-8">
           <div className="w-1.5 h-8 bg-gray-700 rounded-full" />
           <h2 className="text-2xl font-black text-white/90 uppercase tracking-tighter">
-            Danh mục nổi bật
+            Danh muc noi bat
           </h2>
         </div>
 
@@ -145,7 +124,7 @@ export function HomePage() {
                 name={category.name}
                 slug={category.slug}
                 viewers={category.currentViewers ?? 0}
-                thumbnail={category.coverImageUrl || DEFAULT_IMAGE}
+                thumbnail={category.coverImageUrl || DEFAULT_STREAM_IMAGE}
                 activeStreamsCount={category.activeStreamsCount}
                 isFreeToPlay={category.isFreeToPlay}
                 tags={category.steamTags}
@@ -153,7 +132,7 @@ export function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="text-white/40 text-center py-10">Không tìm thấy danh mục nào.</p>
+          <p className="text-white/40 text-center py-10">Khong tim thay danh muc nao.</p>
         )}
       </section>
     </div>

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Users } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { StreamCard } from "../components/StreamCard";
 import followApi, { FollowDto } from "../../../api/followApi";
 import streamApi, { Stream } from "../../../api/streamApi";
+import { getStreamThumbnail } from "../utils/streamThumbnail";
 
 export function FollowingPage() {
   const [liveFollowing, setLiveFollowing] = useState<Stream[]>([]);
@@ -13,29 +14,25 @@ export function FollowingPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // 1. Lấy danh sách những người mình đang follow
+
         const followRes = await followApi.getFollowing();
         const followingList = followRes.data;
 
-        // 2. Lấy danh sách tất cả các luồng đang Live trên hệ thống
         const streamRes = await streamApi.getLiveStreams();
         const allLiveStreams = streamRes.data;
 
-        // 3. Lọc ra những người mình follow mà đang Live
-        const live = allLiveStreams.filter(stream => 
-          followingList.some(f => f.followingId === stream.streamerId)
+        const live = allLiveStreams.filter((stream) =>
+          followingList.some((f) => f.followingId === stream.streamerId)
         );
 
-        // 4. Lọc ra những người mình follow mà đang Offline
-        const offline = followingList.filter(f => 
-          !allLiveStreams.some(stream => stream.streamerId === f.followingId)
+        const offline = followingList.filter(
+          (f) => !allLiveStreams.some((stream) => stream.streamerId === f.followingId)
         );
 
         setLiveFollowing(live);
         setOfflineFollowing(offline);
       } catch (err) {
-        console.error("Lỗi khi tải danh sách Following:", err);
+        console.error("Loi khi tai danh sach Following:", err);
       } finally {
         setLoading(false);
       }
@@ -54,39 +51,38 @@ export function FollowingPage() {
 
   return (
     <div className="p-6 custom-scrollbar overflow-y-auto h-full">
-      {/* SECTION: LIVE CHANNELS */}
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          Live Channels 
+          Live Channels
           <span className="bg-red-600 text-[10px] px-2 py-0.5 rounded-full animate-pulse">
             {liveFollowing.length}
           </span>
         </h2>
-        
+
         {liveFollowing.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {liveFollowing.map((stream) => (
-              <StreamCard 
+              <StreamCard
                 key={stream.id}
+                stream={stream}
                 channelName={stream.streamerName}
                 title={stream.title}
-                game={stream.categoryName || "Chưa phân loại"}
+                game={stream.categoryName || "Chua phan loai"}
                 viewers={stream.viewersCount}
-                thumbnail={stream.thumbnail || "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800"}
+                thumbnail={getStreamThumbnail(stream)}
               />
             ))}
           </div>
         ) : (
           <div className="bg-white/5 border border-white/5 rounded-xl p-8 text-center text-white/40">
-            Không có kênh nào bạn theo dõi đang phát trực tiếp.
+            Khong co kenh nao ban theo doi dang phat truc tiep.
           </div>
         )}
       </section>
 
-      {/* SECTION: OFFLINE CHANNELS */}
       <section>
         <h2 className="text-xl font-bold mb-4 text-white/70">Offline Channels</h2>
-        
+
         {offlineFollowing.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {offlineFollowing.map((follow) => (
@@ -108,7 +104,7 @@ export function FollowingPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-white/20">Bạn chưa theo dõi ai cả.</p>
+          <p className="text-sm text-white/20">Ban chua theo doi ai ca.</p>
         )}
       </section>
     </div>
